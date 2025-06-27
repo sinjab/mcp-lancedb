@@ -6,6 +6,8 @@ import shutil
 import os
 from typing import Generator, List
 from unittest.mock import patch
+import logging
+from mcp_lancedb.core.logger import get_logger
 
 # Import test modules
 import sys
@@ -59,15 +61,40 @@ def clean_db(test_db_path: str) -> Generator[str, None, None]:
         pass
 
 
+@pytest.fixture(autouse=True)
+def suppress_expected_test_errors():
+    """Suppress expected error logging during tests to prevent test exceptions from appearing as real errors."""
+    # Temporarily set logger level to CRITICAL to suppress ERROR logs during tests
+    # This prevents intentional test exceptions from appearing as real errors
+    logger = get_logger()
+    original_level = logger.level
+    
+    # Set to CRITICAL to suppress ERROR and WARNING logs during tests
+    logger.setLevel(logging.CRITICAL)
+    
+    yield
+    
+    # Restore original level after test
+    logger.setLevel(original_level)
+
+
+@pytest.fixture
+def mock_lancedb_connection():
+    """Mock LanceDB connection for testing."""
+    with patch('mcp_lancedb.core.connection.lancedb.connect') as mock_connect:
+        mock_db = mock_connect.return_value
+        yield mock_db
+
+
 @pytest.fixture
 def sample_documents() -> List[str]:
     """Provide sample documents for testing."""
     return [
-        "This is a test document about machine learning and AI.",
-        "Python is a great programming language for data science.",
-        "Vector databases are useful for semantic search applications.",
-        "LanceDB provides efficient storage for high-dimensional vectors.",
-        "Natural language processing enables computers to understand text."
+        "This is a test document about artificial intelligence.",
+        "Machine learning is a subset of AI.",
+        "Deep learning uses neural networks.",
+        "Natural language processing helps computers understand text.",
+        "Computer vision enables machines to see and interpret images."
     ]
 
 
@@ -98,6 +125,13 @@ def test_queries() -> List[str]:
         "semantic search",
         "natural language"
     ]
+
+
+@pytest.fixture
+def sample_table_schema():
+    """Sample table schema for testing."""
+    from mcp_lancedb.core.schemas import Schema
+    return Schema
 
 
 class TestTableManager:

@@ -169,9 +169,11 @@ class TestTableDetails:
         db._tables["TestTable"] = DummyTable("TestTable")
         mock_verify_exists.return_value = True
         mock_get_connection.return_value = db
-        result = table_details("test-table")
-        assert isinstance(result, str)
-        assert "Error getting table details" in result or "does not exist" in result
+        
+        with patch('mcp_lancedb.operations.table_management.logger') as mock_logger:
+            result = table_details("test-table")
+            assert isinstance(result, str)
+            assert "Error getting table details" in result or "does not exist" in result
 
 @pytest.mark.unit
 class TestTableStats:
@@ -231,9 +233,11 @@ class TestTableStats:
         db._tables["TestTable"] = DummyTable("TestTable")
         mock_verify_exists.return_value = True
         mock_get_connection.return_value = db
-        result = table_stats("test-table")
-        assert isinstance(result, str)
-        assert "Error getting table statistics" in result or "does not exist" in result
+        
+        with patch('mcp_lancedb.operations.table_management.logger') as mock_logger:
+            result = table_stats("test-table")
+            assert isinstance(result, str)
+            assert "Error getting table statistics" in result or "does not exist" in result
 
 @pytest.mark.unit
 class TestListTables:
@@ -400,18 +404,19 @@ class TestDeleteTable:
     @patch('mcp_lancedb.operations.table_management.verify_table_exists')
     @patch('mcp_lancedb.operations.table_management.sanitize_table_name', return_value="TestTable")
     def test_delete_table_error(self, mock_sanitize, mock_verify_exists, mock_get_connection):
-        """Test table deletion error."""
-        db = DummyDB()
-        db.create_table("TestTable")
-        def drop_table(name):
-            raise Exception("deletion failed")
-        db.drop_table = drop_table
+        """Test table deletion when error occurs."""
+        class ErrorDB(DummyDB):
+            def drop_table(self, name):
+                raise Exception("deletion failed")
+        db = ErrorDB()
+        db._tables["TestTable"] = DummyTable("TestTable")
         mock_verify_exists.return_value = True
         mock_get_connection.return_value = db
-        result = delete_table("test-table")
         
-        assert isinstance(result, str)
-        assert "Error deleting table" in result or "does not exist" in result
+        with patch('mcp_lancedb.operations.table_management.logger') as mock_logger:
+            result = delete_table("test-table")
+            assert isinstance(result, str)
+            assert "Error deleting table" in result
 
     @patch('mcp_lancedb.operations.table_management.get_connection')
     @patch('mcp_lancedb.operations.table_management.verify_table_exists')

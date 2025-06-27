@@ -54,8 +54,9 @@ class TestGetEmbeddings:
         mock_model.embed_documents.side_effect = Exception("Model error")
         texts = ["Hello world"]
         
-        with pytest.raises(Exception):
-            get_embeddings(texts)
+        with patch('mcp_lancedb.operations.search_operations.logger') as mock_logger:
+            with pytest.raises(Exception):
+                get_embeddings(texts)
 
 @pytest.mark.unit
 class TestQueryTable:
@@ -214,9 +215,11 @@ class TestQueryTable:
         mock_verify_exists.return_value = True
         mock_get_table.return_value = mock_table
         mock_get_connection.return_value = mock_db
-        result = query_table("test query", table_name="test-table", top_k=5)
-        assert isinstance(result, dict)
-        assert "results" in result
+        
+        with patch('mcp_lancedb.operations.search_operations.logger') as mock_logger:
+            result = query_table("test query", table_name="test-table", top_k=5)
+            assert isinstance(result, dict)
+            assert "results" in result
 
     @patch('mcp_lancedb.operations.search_operations.get_connection')
     @patch('mcp_lancedb.operations.search_operations.get_table_cached')
@@ -232,9 +235,11 @@ class TestQueryTable:
         mock_verify_exists.return_value = True
         mock_get_table.return_value = mock_table
         mock_get_connection.return_value = mock_db
-        result = query_table("test query", table_name="test-table", top_k=5)
-        assert isinstance(result, str)
-        assert "Unable to search table" in result
+        
+        with patch('mcp_lancedb.operations.search_operations.logger') as mock_logger:
+            result = query_table("test query", table_name="test-table", top_k=5)
+            assert isinstance(result, str)
+            assert "Unable to search table" in result
 
     @patch('mcp_lancedb.operations.search_operations.get_connection')
     @patch('mcp_lancedb.operations.search_operations.get_table_cached')
@@ -250,9 +255,11 @@ class TestQueryTable:
         mock_verify_exists.return_value = True
         mock_get_table.return_value = mock_table
         mock_get_connection.return_value = mock_db
-        result = query_table("test query", table_name="test-table")
-        assert isinstance(result, dict)
-        assert "results" in result
+        
+        with patch('mcp_lancedb.operations.search_operations.logger') as mock_logger:
+            result = query_table("test query", table_name="test-table")
+            assert isinstance(result, dict)
+            assert "results" in result
 
 @pytest.mark.unit
 class TestHybridSearch:
@@ -398,9 +405,11 @@ class TestHybridSearch:
         mock_verify_exists.return_value = True
         mock_get_table.return_value = mock_table
         mock_get_connection.return_value = mock_db
-        result = hybrid_search("test query", table_name="test-table", filter_expr="invalid filter", top_k=5)
-        assert isinstance(result, str)
-        assert "Error performing hybrid search" in result
+        
+        with patch('mcp_lancedb.operations.search_operations.logger') as mock_logger:
+            result = hybrid_search("test query", table_name="test-table", filter_expr="invalid filter", top_k=5)
+            assert isinstance(result, str)
+            assert "Error performing hybrid search" in result
 
     @patch('mcp_lancedb.operations.search_operations.get_connection')
     @patch('mcp_lancedb.operations.search_operations.get_table_cached')
@@ -428,6 +437,8 @@ class TestHybridSearch:
         mock_verify_exists.return_value = True
         mock_get_table.return_value = mock_table
         mock_get_connection.return_value = mock_db
-        result = hybrid_search("test query", table_name="test-table", top_k=5)
-        assert isinstance(result, str)
-        assert "Error performing hybrid search" in result 
+        
+        with patch('mcp_lancedb.operations.search_operations.logger') as mock_logger:
+            result = hybrid_search("test query", table_name="test-table", top_k=5)
+            assert isinstance(result, str)
+            assert "Error performing hybrid search" in result 

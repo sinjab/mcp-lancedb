@@ -169,7 +169,6 @@ class TestIngestDocs:
         # Setup database and table mocks
         mock_db = Mock()
         mock_table = Mock()
-        mock_table.add.side_effect = Exception("Add failed")
         
         # Create proper schema field mock
         mock_field = Mock()
@@ -185,10 +184,15 @@ class TestIngestDocs:
         mock_db.open_table.return_value = mock_table
         mock_connect.return_value = mock_db
         
-        result = ingest_docs("test-table", ["Document 1"])
-        
-        assert "Error" in result
-        assert "Add failed" in result
+        # Test with a single document to minimize log noise
+        with patch('mcp_lancedb.operations.document_management.logger') as mock_logger:
+            # Configure the mock to raise an exception
+            mock_table.add.side_effect = Exception("Add failed")
+            
+            result = ingest_docs("test-table", ["Document 1"])
+            
+            assert "Error" in result
+            assert "Add failed" in result
     
     @patch('mcp_lancedb.operations.document_management.lancedb.connect')
     def test_ingest_docs_large_batch(self, mock_connect):

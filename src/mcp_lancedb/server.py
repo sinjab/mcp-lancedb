@@ -322,4 +322,11 @@ def index_stats(table_name: str) -> dict:
 def run():
     """Run the MCP server."""
     logger.info("Starting LanceDB MCP Server (Modular Version)")
-    mcp.run() 
+    mcp.run()
+
+def main():
+    """Main entry point for the MCP server."""
+    run()
+
+if __name__ == "__main__":
+    main() 

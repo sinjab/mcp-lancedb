@@ -1,9 +1,9 @@
 [project]
-name = "mcp-lancedb"
+name = "lancdb-mcp"
 version = "0.1.0"
-description = "MCP server implementation for LanceDB integration with Claude"
+description = "Production-ready MCP server implementation for LanceDB integration with Claude"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Khaldoon Sinjab", email = "sinjab@gmail.com"}

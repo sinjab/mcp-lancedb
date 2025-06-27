@@ -1,0 +1,128 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# MCP LanceDB Troubleshooting Guide
+
+## Common Issues & Solutions
+
+### Embedding Dimension Mismatches
+**Error**: "Table expects X-dimensional vectors but your configured embedding model produces Y-dimensional vectors"
+
+**Solutions**:
+1. Use a table with dimensions that match your embedding model
+2. Configure an embedding model that produces the required dimensions
+3. Check your environment variables for embedding model configuration
+
+**Related Files**: [src/mcp_lancedb/search_operations.py](mdc:src/mcp_lancedb/search_operations.py)
+
+### Parameter Order Issues  
+**Error**: Function calls failing due to incorrect parameter order
+
+**Root Cause**: Historical bug where `ingest_docs()` expected `(docs, table_name)` but should be `(table_name, docs)`
+
+**Fixed Pattern**:
+- ✅ `ingest_docs(table_name, docs, auto_create_table=True)`
+- ✅ `query_table(query, table_name=None, top_k=5)`
+
+**Files to Check**: [src/mcp_lancedb/document_management.py](mdc:src/mcp_lancedb/document_management.py), [src/mcp_lancedb/server.py](mdc:src/mcp_lancedb/server.py)
+
+### Table Name Sanitization
+**Issue**: Table names like "test-table" become "TestTable" internally
+
+**Explanation**: LanceDB compatibility requires sanitized names
+- Input: "test-table" → Internal: "TestTable"  
+- This is expected behavior, not a bug
+
+**Related**: [src/mcp_lancedb/connection.py](mdc:src/mcp_lancedb/connection.py) - `sanitize_table_name()`
+
+### Test Failures
+
+#### Integration Test Failures
+**Critical**: These indicate real functionality problems
+```bash
+# Run integration tests first
+pytest tests/integration/ -v
+
+# Check specific workflow
+pytest tests/integration/test_full_workflow.py::TestCompleteWorkflow::test_basic_workflow -v
+```
+
+#### Unit Test Schema Mocking Issues
+**Error**: "Mock object is not iterable" when testing schema operations
+
+**Solution**: Use proper field object mocking:
+```python
+# ✅ CORRECT
+mock_field = Mock()
+mock_field.name = "doc"
+mock_field.type = Mock()
+mock_field.type.__str__ = Mock(return_value="string")
+mock_table.schema = [mock_field]
+
+# ❌ WRONG  
+mock_table.schema = Mock()  # Fails when code iterates
+```
+
+### Performance Issues
+**Slow Tests**: If tests take >9 seconds
+1. Check if you're accidentally running real database operations in unit tests
+2. Ensure proper mocking is in place
+3. Run specific test categories to isolate issues
+
+**Memory Issues**: 
+- Check [logs/](mdc:logs/) directory for error details
+- Ensure proper cleanup in test fixtures
+
+### Connection Issues
+**Error**: "Table not found" or connection failures
+
+**Debugging Steps**:
+1. Check database URI configuration
+2. Verify table exists with `verify_table_exists()`
+3. Use connection retry functions from [src/mcp_lancedb/connection.py](mdc:src/mcp_lancedb/connection.py)
+
+**Best Practices**:
+- Use `open_table_with_retry()` for robust table access
+- Use `get_fresh_connection()` for database connections
+- Don't bypass the connection layer
+
+### Environment Configuration
+**Missing Model Configuration**: 
+- Ensure embedding model is set in environment variables
+- Don't try to implement custom model switching
+- Let LanceDB handle embeddings automatically
+
+## Diagnostic Commands
+
+```bash
+# Run all tests to check overall health
+pytest tests/ -v
+
+# Quick health check
+pytest tests/ -q
+
+# Stop at first failure for debugging
+pytest tests/ -x
+
+# Run only integration tests (most important)
+pytest tests/integration/ -v
+
+# Test specific functionality
+pytest tests/unit/test_document_management.py -v
+pytest tests/unit/test_search_operations.py -v
+```
+
+## Recovery Steps
+
+### If Tests Start Failing
+1. **Run integration tests first**: `pytest tests/integration/ -v`
+2. **Check parameter order**: Ensure `(table_name, data)` pattern
+3. **Verify environment setup**: Check embedding model configuration
+4. **Review recent changes**: Look for connection layer bypasses
+
+### Before Making Changes  
+1. **Ensure 100% pass rate**: `pytest tests/ -q`
+2. **Run integration tests**: These prove real functionality
+3. **Check performance**: Full suite should complete in <9 seconds

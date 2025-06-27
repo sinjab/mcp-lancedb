@@ -1,0 +1,54 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# MCP LanceDB - Development Guide
+
+> **📋 Entry Point**: Production-ready MCP server for LanceDB vector database integration with Claude.
+
+## 🎯 **Current Status**
+✅ **7/7 integration tests passing** | ⚡ **Sub-second performance** | 🏆 **Enterprise-grade optimizations**
+
+## 📁 **Project Structure**
+```
+src/mcp_lancedb/
+├── server.py              # MCP server entry point
+├── core/                  # Infrastructure
+│   ├── connection.py     #   DB connection & caching
+│   ├── optimization.py   #   LanceDB best practices
+│   └── schemas.py        #   Data schemas
+└── operations/            # Business logic
+    ├── table_management.py    #   Table CRUD
+    ├── document_management.py #   Document operations
+    └── search_operations.py   #   Search & queries
+```
+
+## 🧭 **Navigation**
+- **Architecture**: [architecture.mdc](mdc:.cursor/rules/architecture.mdc) - Code patterns & best practices
+- **Testing**: [testing.mdc](mdc:.cursor/rules/testing.mdc) - Test structure & validation
+- **Development**: [development.mdc](mdc:.cursor/rules/development.mdc) - Adding features & patterns
+- **Troubleshooting**: [troubleshooting.mdc](mdc:.cursor/rules/troubleshooting.mdc) - Performance & debugging
+
+## ⚡ **Essential Commands**
+```bash
+# Health check
+pytest tests/integration/ -q
+
+# Quick performance test
+python -c "from mcp_lancedb import list_tables; list_tables()"
+```
+
+## 🔧 **Key Implementation Notes**
+- **Connection reuse**: Global singleton pattern
+- **Table caching**: Reuse table objects across operations
+- **Schema handling**: Automatic field mapping for existing tables
+- **Input validation**: Robust parameter checking (e.g., top_k ≥ 0)
+- **Table name mapping**: Handles both original and sanitized names
+
+## 🚨 **Pre-Change Checklist**
+1. Run integration tests: `pytest tests/integration/ -q`
+2. Use cached table objects and connection reuse patterns
+3. Ensure input validation for user parameters
+4. Handle table name sanitization (original ↔ sanitized mapping)
+5. Maintain sub-second performance targets

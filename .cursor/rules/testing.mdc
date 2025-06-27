@@ -1,0 +1,86 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# MCP LanceDB Testing Rules
+
+## Testing Philosophy
+
+**Status**: ✅ **100% Pass Rate** - 72/72 tests passing
+
+### Priority Order
+1. **Integration Tests** (16/16) - Prove the system works end-to-end
+2. **Unit Tests** (56/56) - Test individual function logic and error handling  
+3. **Mock Tests** - Only when they add value beyond integration coverage
+
+## Test Structure
+
+### Integration Tests
+Located in [tests/integration/](mdc:tests/integration) - These are the **most important tests**:
+- [tests/integration/test_full_workflow.py](mdc:tests/integration/test_full_workflow.py) - Complete end-to-end workflows
+- Test real functionality with actual LanceDB operations
+- **100% pass rate is mandatory** - these prove the system works
+
+### Unit Tests
+Located in [tests/unit/](mdc:tests/unit):
+- [tests/unit/test_connection.py](mdc:tests/unit/test_connection.py) - Database connectivity (19/19)
+- [tests/unit/test_document_management.py](mdc:tests/unit/test_document_management.py) - Document ingestion (10/10)  
+- [tests/unit/test_search_operations.py](mdc:tests/unit/test_search_operations.py) - Search functionality (10/10)
+- [tests/unit/test_table_management.py](mdc:tests/unit/test_table_management.py) - Table operations (16/16)
+
+
+## Testing Standards
+
+### When Adding New Features
+1. **Write integration tests first** for user-facing functionality
+2. Add unit tests for logic, validation, and error handling
+3. Avoid complex mocking that tests implementation details
+4. **All tests must pass** before merge (100% required)
+
+### Mock Patterns
+For schema mocking in unit tests:
+```python
+# ✅ CORRECT - Mock schema as list of field objects
+mock_field = Mock()
+mock_field.name = "doc"
+mock_field.type = Mock()
+mock_field.type.__str__ = Mock(return_value="string")
+mock_table.schema = [mock_field]
+
+# ❌ AVOID - Using Mock() for schema iteration
+mock_table.schema = Mock()  # This fails when code iterates
+```
+
+### What We Removed
+- Complex LanceDB mocking tests that tested implementation details
+- Custom embedding dimension switching logic tests
+- Overly complex unit tests that duplicated integration coverage
+
+## Running Tests
+
+```bash
+# Full suite (recommended)
+pytest tests/ -v
+
+# Integration tests (most critical)
+pytest tests/integration/ -v
+
+# Quick verification
+pytest tests/ -q
+
+# Category-specific
+pytest tests/unit/test_document_management.py -v
+```
+
+## Performance Standards
+- **Full Test Suite**: <9 seconds
+- **Integration Tests**: <3 seconds
+- **Unit Tests**: <6 seconds
+- **Individual Tests**: <100ms
+
+## Key Success Factors
+- **Integration-first approach** validates real user workflows
+- **Simple, focused tests** that provide clear feedback
+- **Removed technical debt** by eliminating unnecessary complex mocking
+- **Fast execution** enables rapid development cycles

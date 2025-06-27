@@ -1,0 +1,324 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# MCP LanceDB Development Guide
+
+## 🛠️ **Development Workflow** 
+
+### **Setup (Enterprise-Grade)**
+```bash
+# Environment setup
+python -m venv .venv
+source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
+pip install -r requirements.txt
+
+# Quick validation (integration tests most critical)
+pytest tests/integration/ -q
+
+# Performance verification
+python -c "from mcp_lancedb import list_tables, optimize_table; list_tables(); print('✅ LanceDB best practices active')"
+```
+
+## 🎯 **Adding New MCP Tools (Best Practices)**
+
+### **1. Follow LanceDB Performance Patterns**
+```python
+# ✅ BEST PRACTICE: Use cached table objects
+from mcp_lancedb.core.connection import get_table_cached, clear_table_cache
+
+@server.call_tool()
+async def my_new_tool(table_name: str) -> CallToolResult:
+    try:
+        # Use cached table for performance
+        table = get_table_cached(table_name)
+        
+        # Apply LanceDB best practices
+        result = table.some_operation()
+        
+        # Clear cache if table was modified
+        if operation_modifies_table:
+            clear_table_cache(table_name)
+            
+        return CallToolResult(content=result)
+    except Exception as e:
+        return CallToolResult(content=f"Error: {e}", is_error=True)
+```
+
+### **2. Integration Test First**
+```python
+# tests/integration/test_my_feature.py
+def test_my_new_tool_performance():
+    """Test the new tool follows LanceDB best practices."""
+    import time
+    
+    start = time.time()
+    result = my_new_tool("test_table")
+    elapsed = time.time() - start
+    
+    # Verify performance (sub-second for best practices)
+    assert elapsed < 1.0, f"Tool too slow: {elapsed:.3f}s"
+    assert "success" in result.lower()
+```
+
+### **3. Add to Public API**
+```python
+# src/mcp_lancedb/__init__.py
+def my_new_function(table_name: str):
+    """Apply new functionality following LanceDB best practices."""
+    from .core.connection import get_table_cached
+    table = get_table_cached(table_name)
+    return table.my_operation()
+
+# Add to __all__
+__all__ = [
+    # ... existing exports
+    "my_new_function"
+]
+```
+
+## ⚡ **Performance Development Standards**
+
+### **Connection Management (CRITICAL)**
+```python
+# ✅ ALWAYS: Use global connection
+from mcp_lancedb.core.connection import get_connection
+db = get_connection()
+
+# ✅ ALWAYS: Use cached table objects  
+from mcp_lancedb.core.connection import get_table_cached
+table = get_table_cached(table_name)
+
+# ❌ NEVER: Create new connections
+db = lancedb.connect(uri)  # Anti-pattern!
+
+# ❌ NEVER: Open table repeatedly
+table = db.open_table(name)  # Anti-pattern!
+```
+
+### **Query Optimization (REQUIRED)**
+```python
+# ✅ BEST PRACTICE: Column selection
+results = query.limit(top_k).select(["doc", "_distance"]).to_list()
+
+# ✅ PERFORMANCE: Query analysis (for debugging)
+from mcp_lancedb.core.connection import analyze_query_performance
+
+def debug_query_performance(table_name: str, query: str):
+    def create_query(table, query, top_k):
+        return table.search(query).limit(top_k).select(["doc"])
+    
+    analysis = analyze_query_performance(table_name, create_query, query, 5)
+    print(f"Performance insights: {analysis.get('performance_insights', [])}")
+
+# ❌ AVOID: Full column return
+results = query.limit(top_k).to_list()  # Inefficient!
+```
+
+### **Index Monitoring (RECOMMENDED)**
+```python
+# ✅ MONITOR: Check index coverage
+from mcp_lancedb import get_index_stats
+
+def check_table_health(table_name: str):
+    stats = get_index_stats(table_name)
+    if 'optimization_needed' in stats:
+        print(f"⚠️ {stats['optimization_needed']}")
+        print("🔧 Run optimize_table() to fix")
+    elif 'index_coverage' in stats:
+        print(f"✅ {stats['index_coverage']}")
+```
+
+## 📊 **Testing Standards (Enhanced)**
+
+### **Integration Tests (PRIMARY)**
+```python
+# Focus on real functionality with performance validation
+def test_feature_performance():
+    import time
+    
+    start = time.time()
+    result = my_feature()
+    elapsed = time.time() - start
+    
+    # Validate functionality AND performance
+    assert result["success"] is True
+    assert elapsed < 0.1, f"Performance regression: {elapsed:.3f}s"
+```
+
+### **Performance Benchmarks**
+```python
+def test_lancedb_best_practices_compliance():
+    """Verify system follows all LanceDB best practices."""
+    
+    # 1. Connection reuse
+    from mcp_lancedb.core.connection import get_connection
+    conn1 = get_connection()
+    conn2 = get_connection()
+    assert conn1 is conn2, "Connection not reused!"
+    
+    # 2. Table caching
+    from mcp_lancedb.core.connection import get_table_cached
+    table1 = get_table_cached("test_table")
+    table2 = get_table_cached("test_table") 
+    assert table1 is table2, "Table not cached!"
+    
+    # 3. Performance standards
+    result = some_operation()
+    assert result["performance_optimized"] is True
+```
+
+## 🔧 **Common Tasks (Optimized)**
+
+### **Create New Table Operation**
+```python
+# Follow this pattern for all new table operations
+def new_table_operation(table_name: str, data):
+    from mcp_lancedb.core.connection import get_table_cached, clear_table_cache
+    from mcp_lancedb.core.config import logger
+    
+    try:
+        # Use cached table
+        table = get_table_cached(table_name)
+        
+        # Perform operation
+        result = table.operation(data)
+        
+        # Clear cache if table structure changed
+        if operation_changes_structure:
+            clear_table_cache(table_name)
+            
+        logger.info(f"Operation completed for {table_name}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Operation failed: {e}")
+        raise
+```
+
+### **Add Performance Monitoring**
+```python
+def monitor_operation_performance(table_name: str):
+    """Add performance monitoring to any operation."""
+    import time
+    from mcp_lancedb import get_index_stats
+    
+    start = time.time()
+    
+    # Your operation here
+    result = your_operation(table_name)
+    
+    elapsed = time.time() - start
+    
+    # Performance insights
+    if elapsed > 0.1:  # Flag slow operations
+        stats = get_index_stats(table_name)
+        print(f"⚠️ Slow operation: {elapsed:.3f}s")
+        if 'optimization_needed' in stats:
+            print(f"💡 Optimization opportunity: {stats['optimization_needed']}")
+    
+    return result
+```
+
+## ⚠️ **Common Pitfalls (AVOID)**
+
+### **❌ Anti-Patterns**
+```python
+# DON'T: Create new connections
+db = lancedb.connect(uri)
+
+# DON'T: Open table repeatedly
+table = db.open_table(name)
+
+# DON'T: Use sleep delays
+time.sleep(0.1)  # Removed - not needed with LanceDB
+
+# DON'T: Filesystem operations
+os.listdir(db_path)  # Use db.table_names() instead
+
+# DON'T: Return all columns
+results = query.to_list()  # Use .select() instead
+```
+
+### **✅ Correct Patterns**
+```python
+# DO: Use cached connections and tables
+from mcp_lancedb.core.connection import get_connection, get_table_cached
+db = get_connection()
+table = get_table_cached(table_name)
+
+# DO: Use column selection
+results = query.select(["doc", "_distance"]).to_list()
+
+# DO: Monitor performance
+from mcp_lancedb import get_index_stats, optimize_table
+stats = get_index_stats(table_name)
+if 'optimization_needed' in stats:
+    optimize_table(table_name)
+```
+
+## 📈 **Performance Validation**
+
+### **Before Committing**
+```bash
+# 1. Run integration tests (most critical)
+pytest tests/integration/ -q
+
+# 2. Verify performance 
+python -c "
+import time
+from mcp_lancedb import list_tables, table_details, optimize_table
+start = time.time()
+list_tables()
+table_details('test_table')
+optimize_table('test_table')
+elapsed = time.time() - start
+print(f'Total time: {elapsed:.3f}s')
+assert elapsed < 1.0, f'Performance regression: {elapsed:.3f}s'
+print('✅ Performance validation passed')
+"
+
+# 3. Check best practices compliance
+python -c "
+from mcp_lancedb import get_index_stats
+stats = get_index_stats('test_table')
+print(f'Index monitoring: {stats.get(\"index_coverage\", \"Available\")}')
+print('✅ LanceDB best practices verified')
+"
+```
+
+### **Continuous Monitoring**
+```python
+# Add to your development workflow
+def validate_performance_standards():
+    """Ensure all operations meet performance standards."""
+    
+    # Check connection reuse
+    from mcp_lancedb.core.connection import get_connection
+    assert get_connection() is get_connection(), "Connection not reused"
+    
+    # Check table caching
+    from mcp_lancedb.core.connection import get_table_cached
+    if table_exists("test_table"):
+        assert get_table_cached("test_table") is get_table_cached("test_table"), "Table not cached"
+    
+    # Performance benchmarks
+    operations = [
+        lambda: list_tables(),
+        lambda: table_details("test_table"),
+        lambda: optimize_table("test_table")
+    ]
+    
+    for op in operations:
+        start = time.time()
+        op()
+        elapsed = time.time() - start
+        assert elapsed < 0.5, f"Operation too slow: {elapsed:.3f}s"
+    
+    print("✅ All performance standards met")
+```
+
+---
+
+**💡 Development Philosophy**: Every new feature should follow LanceDB Enterprise best practices with performance monitoring and sub-second response times. Integration tests prove real-world functionality works optimally.

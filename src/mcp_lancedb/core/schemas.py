@@ -44,10 +44,16 @@ def create_custom_schema(vector_dimensions: int, additional_fields: dict = None)
             'float': float, 'double': float, 'float64': float,
             'bool': bool, 'boolean': bool
         }
-        
         for field_name, field_type in additional_fields.items():
-            if isinstance(field_type, str) and field_type.lower() in type_map:
-                annotations[field_name] = type_map[field_type.lower()]
+            if isinstance(field_type, str):
+                if field_type.lower() in type_map:
+                    annotations[field_name] = type_map[field_type.lower()]
+                else:
+                    # Try to resolve the type name
+                    try:
+                        annotations[field_name] = eval(field_type)
+                    except Exception:
+                        annotations[field_name] = str
             else:
                 annotations[field_name] = field_type
     

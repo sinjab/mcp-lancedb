@@ -152,7 +152,7 @@ class TestSearchEndpoints:
         result = query_table("test query", "test_table", 5, "vector", False)
         
         assert result == {"results": [{"doc": "result"}], "count": 1}
-        mock_query_table.assert_called_once_with("test query", table_name="test_table", top_k=5, auto_create_table=False)
+        mock_query_table.assert_called_once_with("test query", "test_table", 5, "vector", False)
     
     @patch('mcp_lancedb.operations.search_operations.hybrid_search')
     def test_hybrid_search_endpoint(self, mock_hybrid_search):
@@ -162,7 +162,7 @@ class TestSearchEndpoints:
         result = hybrid_search("test query", "test_table", "category = 'test'", 5, "cosine", 0.5, False)
         
         assert result == {"results": [{"doc": "result"}], "count": 1}
-        mock_hybrid_search.assert_called_once_with("test query", table_name="test_table", filter_expr="category = 'test'", top_k=5, metric="cosine", distance_threshold=0.5, auto_create_table=False)
+        mock_hybrid_search.assert_called_once_with("test query", "test_table", "category = 'test'", 5, "cosine", 0.5, False)
 
 @pytest.mark.unit
 class TestServerErrorHandling:
@@ -249,7 +249,7 @@ class TestServerParameterValidation:
             result = query_table("test query")
             
             assert result == {"results": [], "count": 0}
-            mock_query_table.assert_called_once_with("test query", table_name=None, top_k=5, auto_create_table=False)
+            mock_query_table.assert_called_once_with("test query", None, 5, "vector", False)
     
     def test_hybrid_search_default_parameters(self):
         """Test hybrid_search with default parameters."""
@@ -259,4 +259,4 @@ class TestServerParameterValidation:
             result = hybrid_search("test query")
             
             assert result == {"results": [], "count": 0}
-            mock_hybrid_search.assert_called_once_with("test query", table_name=None, filter_expr=None, top_k=5, metric="cosine", distance_threshold=None, auto_create_table=False) 
+            mock_hybrid_search.assert_called_once_with("test query", None, None, 5, "cosine", None, False) 

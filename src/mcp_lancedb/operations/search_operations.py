@@ -22,7 +22,7 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
         List[List[float]]: List of embedding vectors
     """
     try:
-        from .config import model
+        from ..core.config import model
         logger.debug(f"Generating embeddings for {len(texts)} texts")
         
         # Use lancedb's embedding function with the configured model

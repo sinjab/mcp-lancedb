@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from mcp_lancedb.core import (
-    get_fresh_connection,
+    get_connection,
     verify_table_exists,
     open_table_with_retry,
     create_table_with_retry,
@@ -55,8 +55,8 @@ class TestSanitizeTableName:
     def test_empty_string_fallback(self):
         """Empty strings should get a fallback name."""
         result = sanitize_table_name("")
-        assert result.startswith("Table")
-        assert len(result) > 5
+        assert result == "DefaultTable"
+        assert len(result) == 12
     
     def test_special_only_fallback(self):
         """Strings with only special characters should get fallback."""
@@ -69,61 +69,53 @@ class TestSanitizeTableName:
 class TestVerifyTableExists:
     """Test table existence verification."""
     
-    @patch('mcp_lancedb.core.connection.get_all_tables_filesystem')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
-    def test_table_exists_and_accessible(self, mock_get_connection, mock_get_tables):
+    @patch('mcp_lancedb.core.connection.get_connection')
+    def test_table_exists_and_accessible(self, mock_get_connection):
         """Test when table exists and is accessible."""
         mock_db = Mock()
         mock_table = Mock()
         mock_table.schema = Mock()
-        
-        mock_get_tables.return_value = ["TestTable", "OtherTable"]
         mock_db.open_table.return_value = mock_table
         mock_get_connection.return_value = mock_db
         
         assert verify_table_exists("TestTable") is True
-        mock_get_tables.assert_called_once()
         mock_db.open_table.assert_called_once_with("TestTable")
     
-    @patch('mcp_lancedb.core.connection.get_all_tables_filesystem')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
-    def test_table_not_in_list(self, mock_get_connection, mock_get_tables):
+    @patch('mcp_lancedb.core.connection.get_connection')
+    def test_table_not_in_list(self, mock_get_connection):
         """Test when table is not in the table list."""
         mock_db = Mock()
-        mock_get_tables.return_value = ["OtherTable", "AnotherTable"]
+        mock_db.open_table.side_effect = Exception("Not found")
+        mock_db.table_names.return_value = ["OtherTable", "AnotherTable"]
         mock_get_connection.return_value = mock_db
         
         assert verify_table_exists("TestTable") is False
-        mock_get_tables.assert_called()
-        mock_db.open_table.assert_not_called()
+        mock_db.open_table.assert_called_with("TestTable")
     
-    @patch('mcp_lancedb.core.connection.get_all_tables_filesystem')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
-    def test_table_exists_but_not_accessible(self, mock_get_connection, mock_get_tables):
+    @patch('mcp_lancedb.core.connection.get_connection')
+    def test_table_exists_but_not_accessible(self, mock_get_connection):
         """Test when table exists in list but can't be opened."""
         mock_db = Mock()
-        mock_get_tables.return_value = ["TestTable"]
         mock_db.open_table.side_effect = Exception("Cannot open table")
+        mock_db.table_names.return_value = ["TestTable"]
         mock_get_connection.return_value = mock_db
         
         assert verify_table_exists("TestTable", max_retries=1) is False
         mock_db.open_table.assert_called_with("TestTable")
     
-    @patch('mcp_lancedb.core.connection.get_all_tables_filesystem')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
-    def test_retry_logic(self, mock_get_connection, mock_get_tables):
+    @patch('mcp_lancedb.core.connection.get_connection')
+    def test_retry_logic(self, mock_get_connection):
         """Test retry logic when table becomes available."""
         mock_db = Mock()
         mock_table = Mock()
         mock_table.schema = Mock()
-        
-        # First call: table not found, second call: table found
-        mock_get_tables.side_effect = [[], ["TestTable"]]
-        mock_db.open_table.return_value = mock_table
+        # First call: open_table fails, second call: open_table succeeds
+        mock_db.open_table.side_effect = [Exception("Not found"), mock_table]
+        mock_db.table_names.return_value = ["TestTable"]
         mock_get_connection.return_value = mock_db
         
         assert verify_table_exists("TestTable", max_retries=2) is True
-        assert mock_get_tables.call_count == 2
+        assert mock_db.open_table.call_count == 2
 
 
 @pytest.mark.unit
@@ -132,7 +124,7 @@ class TestCreateTableWithRetry:
     
     @patch('mcp_lancedb.core.connection.sanitize_table_name')
     @patch('mcp_lancedb.core.connection.verify_table_exists')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
+    @patch('mcp_lancedb.core.connection.get_connection')
     def test_successful_creation(self, mock_get_connection, mock_verify, mock_sanitize):
         """Test successful table creation."""
         mock_sanitize.return_value = "TestTable"
@@ -157,7 +149,7 @@ class TestCreateTableWithRetry:
     
     @patch('mcp_lancedb.core.connection.sanitize_table_name')
     @patch('mcp_lancedb.core.connection.verify_table_exists')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
+    @patch('mcp_lancedb.core.connection.get_connection')
     def test_table_already_exists(self, mock_get_connection, mock_verify, mock_sanitize):
         """Test when table already exists."""
         mock_sanitize.return_value = "TestTable"
@@ -179,7 +171,7 @@ class TestCreateTableWithRetry:
     
     @patch('mcp_lancedb.core.connection.sanitize_table_name')
     @patch('mcp_lancedb.core.connection.verify_table_exists')
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
+    @patch('mcp_lancedb.core.connection.get_connection')
     def test_creation_failure(self, mock_get_connection, mock_verify, mock_sanitize):
         """Test table creation failure."""
         mock_sanitize.return_value = "TestTable"
@@ -202,7 +194,7 @@ class TestCreateTableWithRetry:
 class TestOpenTableWithRetry:
     """Test table opening with retry logic."""
     
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
+    @patch('mcp_lancedb.core.connection.get_connection')
     def test_successful_open(self, mock_get_connection):
         """Test successful table opening."""
         mock_db = Mock()
@@ -216,7 +208,7 @@ class TestOpenTableWithRetry:
         assert result is mock_table
         mock_db.open_table.assert_called_once_with("TestTable")
     
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
+    @patch('mcp_lancedb.core.connection.get_connection')
     def test_open_failure(self, mock_get_connection):
         """Test table opening failure."""
         mock_db = Mock()
@@ -226,7 +218,7 @@ class TestOpenTableWithRetry:
         with pytest.raises(Exception, match="Cannot open table"):
             open_table_with_retry("TestTable", max_retries=1)
     
-    @patch('mcp_lancedb.core.connection.get_fresh_connection')
+    @patch('mcp_lancedb.core.connection.get_connection')
     def test_retry_success(self, mock_get_connection):
         """Test successful opening after retry."""
         mock_db = Mock()
